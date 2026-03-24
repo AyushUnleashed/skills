@@ -1,0 +1,46 @@
+{
+  "skill_name": "screenshots",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need 3-5 screenshots of https://playwright.dev for our Product Hunt launch tomorrow. We want to show the features/hero and maybe the docs section. Save them to /tmp/screenshots-eval1/",
+      "expected_output": "3-5 PNG files in /tmp/screenshots-eval1/ at 2x retina resolution (actual pixel dimensions ~2880x1600+), named with numeric kebab-case prefixes. Each screenshot should show only a specific section of the playwright.dev site, not the full page. Screenshots verified by vision and adjusted if needed.",
+      "files": [],
+      "assertions": [
+        "At least 3 PNG files are created in /tmp/screenshots-eval1/",
+        "All files follow kebab-case naming with numeric prefix (e.g. 01-hero.png)",
+        "The skill used agent-browser or similar to explore the site before capturing",
+        "The skill read/analyzed each screenshot after capture (vision verification step)",
+        "The script capture.js was used (not a full-page dump approach)",
+        "No screenshot file is smaller than 100 KB (indicating meaningful content was captured)"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "can you screenshot just the pricing section of https://tailwindcss.com for me? just that one section, nothing else. put it in /tmp/screenshots-eval2/",
+      "expected_output": "A single PNG file in /tmp/screenshots-eval2/ showing only the pricing section of tailwindcss.com, not the full page, not the header, not other sections. File is retina quality.",
+      "files": [],
+      "assertions": [
+        "Exactly 1 PNG file is created in /tmp/screenshots-eval2/",
+        "The skill explored the page to find the pricing section before capturing",
+        "The capture used a selector or targeted scroll position (not --full-page flag)",
+        "The skill verified the screenshot after capture and confirmed it showed the pricing section",
+        "File is at least 50 KB (real content, not a blank/tiny capture)"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "I'm launching my SaaS on Product Hunt next week. Can you take 5 screenshots of https://vercel.com for inspiration? I want: hero, features, pricing, enterprise section, and the footer/CTA. HiDPI quality. Save to /tmp/screenshots-eval3/",
+      "expected_output": "5 PNG files in /tmp/screenshots-eval3/, one for each requested section (hero, features, pricing, enterprise, footer/CTA). Each captures only its specific section. Files are at retina resolution. The skill explored the page structure, planned which selectors to use, captured, verified each one, and adjusted if any was over or under-captured.",
+      "files": [],
+      "assertions": [
+        "Exactly 5 PNG files exist in /tmp/screenshots-eval3/",
+        "Files are named descriptively with numeric prefixes matching the requested sections",
+        "The skill explored the vercel.com page structure (used agent-browser or similar)",
+        "Each screenshot was verified with vision after capture",
+        "The capture.js script was invoked 5 times (once per section)",
+        "No file is smaller than 100 KB"
+      ]
+    }
+  ]
+}
