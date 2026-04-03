@@ -1,0 +1,3 @@
+actor,video_url,default_voice_provider,default_voice,elevenlabs_voice_id
+candace,https://reels-ai-pro-bucket-v2.s3.amazonaws.com/prod-bucket/actors/b06274aa-a195-4a5c-9705-6d1a265594ab/candace_squared_video.mp4,openai,nova,
+ayush,https://reels-ai-pro-bucket-v2.s3.ap-south-1.amazonaws.com/prod-bucket/users/814f3aa0-421b-475f-9489-38aea444f364/custom_actors/0d389939-e96d-4996-9877-84e8a37bca0b/ayush_blue_white_shirt_1_vertical.mp4,elevenlabs,ayush,gtVylSAXuNzydSb0uL4b

@@ -108,7 +108,8 @@ const playwright = resolvePlaywright();
   const page = await context.newPage();
 
   try {
-    await page.goto(config.url, { waitUntil: 'networkidle', timeout: 30000 });
+    await page.goto(config.url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForTimeout(3000); // extra settle time for lazy-loaded content
 
     // Hide specified elements (sticky navs, cookie banners, etc.)
     if (config.hide) {

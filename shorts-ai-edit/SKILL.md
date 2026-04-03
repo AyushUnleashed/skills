@@ -139,7 +139,7 @@ After analyzing all assets, save `asset-master.md` to `$RUN_DIR` (not the assets
 Goal: divide the transcript into sections and assign each one a visual treatment.
 
 ### Parse the transcript
-Each line starts with a `[MM:SS]` timestamp. Group consecutive lines into logical **sections** — typically one thought, sentence, or idea (3–15 seconds each). A section under 2 seconds is too short to cut to; merge it with an adjacent one.
+Each line starts with a `[MM:SS]` timestamp. Group consecutive lines into logical **sections** — typically one thought, sentence, or idea (3–15 seconds each). 
 
 ### For each section, decide the edit type
 
@@ -150,7 +150,7 @@ Each line starts with a `[MM:SS]` timestamp. Group consecutive lines into logica
 
 **ASSET** — cut to or overlay a provided asset. Check `asset-master.md` first. Use when an existing asset directly and clearly illustrates the concept being discussed. The connection should be obvious, not forced.
 
-**MOTION-GRAPHIC** — generate a Remotion animation. Use when no asset fits but a visual would genuinely help the viewer understand — abstract concepts, step-by-step processes, comparisons, stats.
+**MOTION-GRAPHIC** — generate a Remotion animation. Use when no asset fits but a visual would help the viewer understand — abstract concepts, step-by-step processes, comparisons, stats.
 
 ### Layout tips
 
