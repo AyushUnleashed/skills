@@ -47,7 +47,13 @@ Read `${RUN_DIR}/edl.json`. Each section looks like:
 You generate for two types:
 
 - **MOTION-GRAPHIC** — standalone animation, no speaker video. Remotion generates everything from scratch. Dimensions depend on layout: FULL = 1080x1920, SPLIT = 1080x960.
-- **A-ROLL-ENHANCED** — the speaker's video clip is given to Remotion as input. Remotion controls the entire 1080x1920 frame and can do anything with the speaker: resize them, put them in a corner, add text alongside, apply effects, overlay kinetic typography, picture-in-picture — whatever makes the moment more engaging. The Remotion output IS the final clip (not overlayed on top later).
+- **A-ROLL-ENHANCED** — the speaker's video clip is given to Remotion as input. Remotion controls the entire 1080x1920 frame. The speaker video should fill the full frame as the base layer with graphics overlaid on top (text, shapes, icons with semi-transparent backgrounds for readability). The Remotion output IS the final clip (not overlayed on top later).
+
+**CRITICAL A-ROLL-ENHANCED RULES:**
+  - **Speaker fills full frame** — do NOT manually split the frame (speaker in bottom half, graphics in top half). That's what the SPLIT layout type is for. A-ROLL-ENHANCED means the speaker IS the background, with graphics layered over.
+  - **Always center-crop the speaker video** — use `objectPosition: "center"` on the `<OffthreadVideo>` element. Never crop from top — it cuts off faces.
+  - **Use semi-transparent overlays** for readability (dark gradient or panel behind text/graphics), not a hard split.
+  - **Speaker should remain visible and dominant** — graphics are accents, not replacements.
 
 ### 2. Pick a motion style
 
@@ -70,7 +76,7 @@ For each A-ROLL-ENHANCED section, extract the speaker's video clip so Remotion c
 
 ```bash
 mkdir -p "${RUN_DIR}/aroll_clips"
-ffmpeg -y -ss {start_seconds} -t {duration} -i "{aroll_path}" -c copy "${RUN_DIR}/aroll_clips/section_{id}.mp4"
+ffmpeg -y -ss {start_seconds} -t {duration} -i "{aroll_path}" -c:v libx264 -preset fast -crf 18 -an "${RUN_DIR}/aroll_clips/section_{id}.mp4"
 ```
 
 Get `aroll_path` from `${RUN_DIR}/workflow_state.json` → `aroll_path` field.
@@ -131,7 +137,7 @@ Generate a self-contained Remotion React component:
 - Only imports from `remotion` and `react`
 - Uses `useCurrentFrame()`, `useVideoConfig()`, `interpolate()`, `spring()`, `AbsoluteFill`, `Sequence` etc.
 
-**For A-ROLL-ENHANCED sections**: the component uses `<Video>` from `@remotion/media` with `staticFile("aroll_section_{id}.mp4")` to include the speaker footage. The component controls everything — how the speaker appears, effects, text, layout. The Remotion output IS the final clip.
+**For A-ROLL-ENHANCED sections**: the component uses `<OffthreadVideo>` from `remotion` (NOT `<Video>` — it causes flicker during server-side rendering) with `staticFile("aroll_section_{id}.mp4")` to include the speaker footage. `<OffthreadVideo>` uses ffmpeg extraction for frame-accurate seeking, eliminating render-time flicker. The component controls everything — how the speaker appears, effects, text, layout. The Remotion output IS the final clip.
 
 **For MOTION-GRAPHIC sections**: standalone animation, no video input.
 

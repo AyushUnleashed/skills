@@ -4,6 +4,13 @@ varun-maya
 agent-browser
 skill-creator
 find-skills
+frontend-design
+hyperframes
+hyperframes-cli
+hyperframes-registry
+gsap
+website-to-hyperframes
+skills-lock.json
 
 # Python
 __pycache__/

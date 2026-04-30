@@ -28,6 +28,14 @@ mkdir -p "${REPO_DIR}/projects/<name>/assets"
 ```
 Then the user copies in `aroll.mp4` and optional asset files.
 
+## Asset Discovery (BEFORE running setup)
+
+The CLI only recognizes assets inside `<project>/assets/`. Users often put assets in other folders — `user_provided_assets/`, `images/`, `media/`, or loose in the project root. If setup reports "No assets detected", the entire pipeline produces a video with zero B-roll, which is almost never intended.
+
+**Before running the setup step**, browse the project directory yourself. Look at what folders and files exist. If `assets/` is empty or missing but you see image/video files (jpg, png, webp, gif, mp4, mov, webm) anywhere else in the project — in any subfolder or in the root — copy them into `assets/` so the CLI finds them. Create `assets/` if it doesn't exist. Ignore anything inside `edit-*/` directories (those are previous run outputs, not source assets).
+
+This is the single most common failure mode — don't skip it.
+
 ---
 
 ## Phase 1: Steps 1–4 (run each step individually)
@@ -124,7 +132,7 @@ When reviewing the EDL, verify:
 2. **Asset relevance** — each ASSET section's image/video should obviously match what's being said. Don't force assets where the connection isn't instant. Better to leave an asset unused than place it poorly.
 3. **No gaps or overlaps** — section N's end must equal section N+1's start.
 4. **First section starts at 0.0**, last section ends at video duration.
-5. **Every section >= 2 seconds**.
+5. **Every section must have positive duration** (end > start, minimum 0.1s). The LLM sometimes generates 0-duration sections like "Opening silence" at 0.0–0.0 — these MUST be rejected or merged with the next section.
 
 ---
 
@@ -158,6 +166,7 @@ The assembler avoids both **black screens** and **lip-sync drift**:
 1. **Per-section clips WITH audio** — each clip is built with its own audio slice from the A-roll at the exact same `-ss`/`-t` timestamps as the video. This keeps audio perfectly synced per-section (no frame-rounding drift that would accumulate across sections).
 2. **No `-shortest` flag** — both video and audio streams use explicit `-t` duration, so nothing gets truncated.
 3. **Concatenate with re-encode** — clips are joined with re-encoding (`-c:v libx264`), not stream copy (`-c copy`). This prevents keyframe boundary glitches that cause flickers between sections.
+4. **A-roll clip extraction must also re-encode** — when extracting speaker clips for A-ROLL-ENHANCED sections, always use `-c:v libx264 -preset fast -crf 18`, never `-c copy`. Stream copy can start on a non-keyframe, causing visual glitches in the Remotion render.
 
 Why NOT extract-full-audio-and-mux-at-end: video clips are quantized to 30fps frame boundaries (~33ms per frame). Each clip's duration rounds slightly, and these errors accumulate across 18+ sections, causing noticeable lip-sync drift by the end. Per-section audio slicing avoids this because each clip's audio is trimmed from the exact same A-roll position.
 

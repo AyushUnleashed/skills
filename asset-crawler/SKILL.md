@@ -1,12 +1,14 @@
 ---
 name: asset-crawler
 description: >
-  Research a topic, find all relevant articles/blogs/sources online, crawl each source
-  for images and video links, then bulk-download everything into an organized folder.
-  Use this skill whenever the user wants to gather visual assets (images, videos, clips)
-  for a topic — for video production, presentations, research, content creation, etc.
-  Triggers on: "find assets for", "gather images and videos about", "crawl for media",
-  "download all images/videos about", "research assets for", "find visuals for",
+  Research a topic, find all relevant articles/blogs/sources online AND search X.com
+  (Twitter) for relevant tweets, crawl each source for images and video links,
+  screenshot notable tweets, then bulk-download everything into an organized folder.
+  Use this skill whenever the user wants to gather visual assets (images, videos, clips,
+  tweet screenshots) for a topic — for video production, presentations, research,
+  content creation, etc. Triggers on: "find assets for", "gather images and videos about",
+  "crawl for media", "download all images/videos about", "research assets for",
+  "find visuals for", "find tweets about", "get screenshots of tweets",
   or any request to collect media from multiple web sources about a topic.
 ---
 
@@ -15,18 +17,53 @@ description: >
 You research a topic across the web, extract every image and video link from relevant
 sources, then bulk-download them into `asset-downloads/` in the user's working directory.
 
-The workflow has three phases: **you do the research** (web search + page crawling),
-**the bundled script does the downloading** (concurrent, handles YouTube/Twitter/direct
-URLs automatically), and **you deduplicate contextually** (grouping assets by what they
-actually depict, not just by URL). You write a file in the format the script reads —
-that's the handoff between phases 1 and 2.
+The workflow has three phases: **you do the research** (web search + page crawling +
+X.com tweet search & screenshots), **the bundled script does the downloading**
+(concurrent, handles YouTube/Twitter/direct URLs automatically), and **you deduplicate
+contextually** (grouping assets by what they actually depict, not just by URL). You
+write a file in the format the script reads — that's the handoff between phases 1 and 2.
+
+## Phase 0: Decompose the Brief
+
+Before searching, figure out how many distinct visual concepts the user's input contains.
+
+**Simple topic** (one line like "find assets about the Vision Pro"): This is already one
+concept. Skip to Phase 1.
+
+**Rich context** (a script, outline, multi-paragraph brief, or anything touching multiple
+subjects): The user is describing many things that each need their own visuals. If you
+only search the headline, you'll get 20 images of the same thing and nothing for the rest.
+
+Read through the input and list out every distinct thing that would need its own visual
+asset — not just the main subject, but people, places, products, data points, comparisons,
+reactions, anything that a video editor would represent with a separate image or clip.
+
+Write this as a simple checklist in `coverage_plan.md`. For each concept, note whether
+you need a **video clip**, a **static image**, or **both** — this matters because video
+clips are the most useful assets for video production and they're easy to miss if you
+only search for images:
+
+```
+# Coverage Plan: "<topic>"
+
+- [ ] Product hero shot (image)
+- [ ] Dr. Smith (specific person mentioned in the brief) (image)
+- [ ] Traditional surgery vs AR-assisted (the comparison) (video + image)
+- [ ] Usage statistics / adoption data (image)
+- [ ] Community reaction (video + image)
+```
+
+Every concept that involves action, process, or emotion should get a video clip, not
+just a static image. Video editors need motion footage — screenshots alone don't cut it
+for B-roll. This is your awareness of what needs covering. Use it during the search
+phase, and after downloading, check which concepts still have gaps.
 
 ## Phase 1: Research & Extract
 
 ### Step 1 — Search broadly
 
-Given the user's topic, run 3-5 WebSearch queries from different angles to maximize
-coverage. Vary your queries:
+Given the user's topic (and your coverage plan if you made one), run WebSearch queries
+to maximize coverage across all the concepts you identified. Vary your queries:
 - The topic verbatim
 - Key technical terms + year
 - Related project/org names
@@ -35,7 +72,89 @@ coverage. Vary your queries:
 Collect every unique URL that looks relevant. Deduplicate by content (different
 subdomains of the same org hosting the same article = keep one).
 
-### Step 2 — Write master_links.txt
+### Step 1b — Search Mixkit for stock video B-roll
+
+In addition to the broad web search above, explicitly search for **stock video clips**
+to use as B-roll. This is a separate step because web searches and article crawling
+mostly surface images (blog hero shots, screenshots, diagrams) — if you skip this step
+you'll end up with lots of images and almost no video clips, which is a problem when
+the user needs footage for video production.
+
+Mixkit (mixkit.co) is the preferred source for stock B-roll because it serves direct
+MP4 download URLs with no Cloudflare blocking — unlike Pexels and Pixabay which 403
+on programmatic access. For each visual concept in your coverage plan that would benefit
+from a video clip, search Mixkit:
+
+```
+site:mixkit.co/free-stock-video "<concept>"
+```
+
+Run 3-5 Mixkit searches covering the key concepts — e.g., "person recording video",
+"frustrated at computer", "social media scrolling", "video editing timeline". Then
+WebFetch each relevant Mixkit clip page to extract the direct `.mp4` download URL.
+Look for URLs matching `https://assets.mixkit.co/.../*.mp4`.
+
+Add every usable Mixkit clip to `assets.txt` as:
+```
+VIDEO | https://assets.mixkit.co/videos/preview/mixkit-...-1234-large-preview-720p.mp4 | Description
+```
+
+This step is specifically for stock footage gaps. You should still gather video assets
+from all other sources too — YouTube embeds from articles, tweet videos, product demos,
+etc. Mixkit just fills the "generic B-roll" need that blog crawling won't cover.
+
+### Step 2 — Search X.com for relevant tweets
+
+Search X.com (Twitter) for tweets related to the topic. This runs alongside your web
+search — tweets often surface real-time reactions, product announcements, demos, and
+media that blogs haven't picked up yet.
+
+#### 2a. Find relevant tweets
+
+Run 2-3 WebSearch queries scoped to X.com:
+- `site:x.com "<topic>"`
+- `site:x.com "<topic>" <key term or person>`
+- `site:x.com "<topic>" <year>` (for recency)
+
+From the search results, pick the **5-10 most relevant tweet URLs** — prioritize tweets
+that have visual content (images, videos, infographics), high engagement, or come from
+authoritative accounts. Skip reply threads and low-value retweets.
+
+#### 2b. Screenshot each tweet
+
+Use the `screenshots` skill to capture each relevant tweet. The goal is a clean capture
+of the full tweet — author, text, any embedded media preview, and engagement metrics
+(likes, retweets, replies).
+
+Tips specific to X.com tweets:
+- Target the `article` selector to isolate the tweet
+- Use a narrow width (~650px) for a natural tweet-width frame
+- X.com has a persistent login/signup banner at the bottom — crop it out
+- Verify each screenshot and retake if overlays obscure the content
+
+Save all tweet screenshots to `asset-downloads/tweets/` with descriptive names:
+```
+asset-downloads/tweets/
+├── tweet-01-satya-announces-copilot.png
+├── tweet-02-mkbhd-review-thread.png
+├── tweet-03-official-launch-demo.png
+```
+
+#### 2c. Extract media URLs from tweets
+
+While screenshotting, also note any images or videos embedded in the tweets. Add these
+to `assets.txt` so the downloader can grab the actual media files:
+- Tweet images: add as `IMAGE | https://pbs.twimg.com/media/... | Description`
+- Tweet videos: add as `VIDEO | https://x.com/user/status/12345 | Description`
+  (the downloader routes x.com URLs through yt-dlp automatically)
+
+This way you get both the visual context (screenshot with engagement metrics) AND the
+raw high-res media files.
+
+### Step 3 — Write master_links.txt
+
+Include X.com tweet URLs in the master links file alongside web sources. Tag them
+with `[R]` like any other relevant link.
 
 Write all discovered links to `master_links.txt` in the working directory. Format:
 
@@ -52,7 +171,7 @@ Write all discovered links to `master_links.txt` in the working directory. Forma
 Tags: `[R]` = relevant, `[X]` = filtered out (duplicate/irrelevant), `[?]` = unsure.
 Only crawl `[R]` links in the next step.
 
-### Step 3 — Crawl each source for assets
+### Step 4 — Crawl each source for assets
 
 For every `[R]` link, use WebFetch to extract images and videos. Use this prompt
 with WebFetch:
@@ -66,16 +185,24 @@ with WebFetch:
 Run WebFetch calls in parallel (batch 5-6 at a time) to go fast. Some pages will
 403 or fail — that's fine, note them and move on.
 
-### Step 4 — Write assets.txt
+### Step 5 — Write assets.txt
 
 Consolidate all extracted assets into a single file called `assets.txt` in the
 working directory. This is the file the downloader script reads.
+
+**Before writing this file, do a sanity check**: look at your coverage plan and make
+sure you have VIDEO entries for every concept tagged as needing video. If you only
+have IMAGE entries, you missed the Mixkit search step — go back and do it. A common
+failure mode is gathering 40 images and 0 videos because the crawling phase only
+finds `<img>` tags on blog posts. The Mixkit step (1b) exists specifically to prevent
+this — it should produce the bulk of your video assets.
 
 **The format is strict** — one asset per line:
 
 ```
 IMAGE | https://example.com/photo.jpg | Description of the image
 VIDEO | https://youtu.be/abc123 | Description of the video
+VIDEO | https://assets.mixkit.co/videos/preview/mixkit-...-large-preview-720p.mp4 | Description
 ```
 
 Rules:
@@ -87,6 +214,8 @@ Rules:
 - Skip site logos, navigation icons, author avatars, and other non-content images
 - Keep: article headers, diagrams, visualizations, photos, infographics, video embeds
 - For YouTube embed URLs like `/embed/XYZ`, write the full URL — the script normalizes it
+- Mixkit direct `.mp4` URLs go as `VIDEO | <url> | <description>` — the downloader
+  handles them via curl (no yt-dlp needed)
 - Any other line format (comments, headers, blank lines) is ignored by the script
 
 #### Light pre-download dedup
@@ -117,10 +246,11 @@ python3 <skill-scripts-dir>/downloader.py \
 Where `<skill-scripts-dir>` is the `scripts/` directory inside this skill's folder.
 
 The script:
-- Reads `assets.txt` (the file you wrote in Step 4)
+- Reads `assets.txt` (the file you wrote in Step 5)
 - Classifies each URL: platform video (YouTube, Twitter, Vimeo, TikTok, etc.) → `yt-dlp`, everything else → `curl`
 - Downloads all assets concurrently (async curl + thread pool for yt-dlp)
 - Saves to `asset-downloads/images/`, `asset-downloads/videos/`, `asset-downloads/audio/`
+- Tweet screenshots are already in `asset-downloads/tweets/` from Step 2b (not re-downloaded)
 - Filenames include a slug from the caption for easy identification
 - Writes `asset-downloads/manifest.json` with status of every download
 
@@ -237,13 +367,32 @@ Show the user a table of duplicate groups before acting. For each group list:
 Let the user confirm or override before moving files. After dedup, report the final
 asset count and space saved.
 
+## Coverage Check
+
+If you built a coverage plan in Phase 0, revisit it now. Go through each concept on the
+checklist and mark it covered or not based on what you actually downloaded. Update
+`coverage_plan.md` with the results:
+
+```
+- [x] Product hero shot — 4 images downloaded
+- [x] Dr. Smith — headshot from conference article
+- [ ] Traditional surgery vs AR-assisted — nothing found
+- [x] Usage statistics — 2 infographics
+- [x] Community reaction — 3 tweet screenshots
+```
+
+Flag the gaps to the user. For uncovered concepts, mention what you tried and that
+nothing usable turned up — the user can decide whether to find those manually or skip them.
+
 ## What to tell the user
 
 After everything completes, summarize:
 - How many sources were found and crawled
+- How many tweets found and screenshotted
 - How many unique images and videos were extracted
 - Download results (succeeded / failed / skipped)
 - Deduplication results (groups found, files removed, space saved)
+- Coverage gaps (if a plan was made) — what concepts still need visuals
 - Note any pages that couldn't be crawled (403s, etc.)
 
 ## Dependencies
@@ -251,3 +400,16 @@ After everything completes, summarize:
 - `curl` — almost always available
 - `yt-dlp` — needed only if there are YouTube/Twitter/etc. platform videos. If not
   installed, those downloads are skipped with a clear message. Install: `pip install yt-dlp`
+- `screenshots` skill — used for capturing tweet screenshots via Playwright/agent-browser
+
+## Known limitations with stock sites
+
+**Pexels and Pixabay** are behind Cloudflare anti-bot protection. `curl`, `yt-dlp`,
+and `WebFetch` all get 403 errors on their pages and download URLs. Do not waste time
+trying workarounds (impersonation flags, API keys, etc.) — it won't work from a CLI
+environment. If you need assets from Pexels/Pixabay, list the URLs in a
+`manual_downloads.txt` file and tell the user to grab them in a browser.
+
+**Mixkit** (mixkit.co) serves direct MP4 files with no bot protection — always prefer
+it for stock video B-roll. Their free library covers most common concepts (people,
+tech, nature, business, emotions).

@@ -29,9 +29,9 @@ node $CAPTURE --url "https://example.com" --out "screenshots/02-features.png" \
 node $CAPTURE --url "https://example.com" --out "screenshots/03-pricing.png" \
   --scroll-y 1800 --width 1440 --height 700
 
-# Hide sticky nav/header before capturing (critical for section shots)
+# Scroll past a sticky nav (e.g. 70px tall) to exclude it from the shot
 node $CAPTURE --url "https://example.com" --out "screenshots/02-features.png" \
-  --selector ".features" --hide "nav,header,.navbar,.sticky" --padding 0
+  --scroll-y 70 --width 1440 --height 800
 ```
 
 ---
@@ -130,14 +130,48 @@ Then assess:
 
 ### 4c. Adjust and retry if needed
 
+Fix framing issues by adjusting the capture window — never try to modify the page itself (e.g. `--hide` selectors are unreliable and often break layouts or hide the actual content).
+
+#### Standard framing fixes (page content issues)
+
+These work for elements that are part of the normal page flow — they move when you scroll or resize:
+
 | Problem | Fix |
 |---|---|
-| Sticky nav/header bleeds in | Add `--hide "nav,header,.navbar"` to remove it entirely (best fix) |
-| Top nav bleeds into shot | Alternatively: increase `--scroll-y` by nav height (~60-80px) |
+| Unrelated section visible at top | Increase `--scroll-y` to push it above the viewport |
+| Unrelated section visible at bottom | Decrease `--height` to exclude it |
 | Bottom content cut off | Increase `--height` by 150-200px |
 | Too much empty space below | Decrease `--height` by 100-150px |
-| Unrelated section visible | Reduce `--height` or increase scroll |
 | Card/item cut in half at bottom | Increase `--height` until the last full card row fits |
+| Content too narrow/wide | Adjust `--width` (narrower widths also help isolate centered content like tweets) |
+
+#### Fixed/sticky overlay strategy (login banners, cookie popups, sticky navs)
+
+Some elements use `position: fixed` or `position: sticky` — they stay glued to the viewport edge no matter what you do with `--height` or `--scroll-y`. Common examples: X/Twitter's "Log in" banner, cookie consent bars, sticky navigation headers, app-install prompts.
+
+**How to tell it's a fixed overlay:** If you adjusted `--height` or `--scroll-y` on a retake and the unwanted element is still there in the same position, it's fixed/sticky. Viewport adjustments will never remove it — the element just moves with the viewport.
+
+**The fix: capture at the right size for your content, then crop the overlay out post-capture.**
+
+Use `--crop-bottom N` or `--crop-top N` (in CSS pixels) to slice off the overlay after the screenshot is taken:
+
+```bash
+# Content needs 800px of height, but there's a ~60px login banner stuck to the bottom
+node $CAPTURE --url "https://x.com/..." --out "screenshots/tweet.png" \
+  --width 650 --height 860 --crop-bottom 60
+
+# Sticky nav at top (~70px) that you want to exclude
+node $CAPTURE --url "https://example.com" --out "screenshots/section.png" \
+  --selector "#features" --crop-top 70
+```
+
+The key idea: instead of trying to make the overlay disappear by shrinking the viewport (which doesn't work because the overlay shrinks with it), you **make the viewport big enough** for your content plus the overlay, then **crop the overlay away** from the final image. This gives you the clean content without the overlay.
+
+Typical crop values: login/signup banners ~50-70px, cookie bars ~60-80px, sticky navs ~50-70px. When in doubt, estimate from the first capture and adjust.
+
+#### General principles
+
+The key principle: treat the viewport as a camera frame. Move it (`--scroll-y`) and resize it (`--width`, `--height`) to frame exactly the content you want. For fixed overlays that don't respond to framing, use `--crop-top`/`--crop-bottom` to cut them out after capture. Multiple small adjustments across retakes are normal.
 
 **Allow up to 3 retakes per screenshot.** If still not right after 3 tries, capture the full section with `--selector` (even if slightly over-padded) and move on — note it in the summary.
 
@@ -210,4 +244,4 @@ agent-browser state save /tmp/auth-state.json
 - **Wait for animations**: Use `--wait 2000` flag if the page has loading animations
 - **Dark mode**: Add `--dark-mode` flag to capture dark variant
 - **Demo data**: If the app shows empty states, seed some demo data first via the UI
-- **Sticky headers**: Increase `--scroll-y` by the header height to avoid the nav overlapping your section
+- **Sticky headers/banners**: If it's part of page flow, increase `--scroll-y` to scroll past it. If it's a fixed overlay (stays glued to viewport edge regardless of scroll/resize), use `--crop-top` or `--crop-bottom` to slice it off after capture. Don't use `--hide` as it often breaks page layouts

@@ -19,6 +19,8 @@
  *   --dark-mode        Use dark color scheme
  *   --full-page        Capture full scrollable page
  *   --hide CSS,CSS,...  Hide elements (comma-separated selectors, e.g. "nav,header,.cookie-banner")
+ *   --crop-top N       Crop N CSS pixels from the top of the final image (for sticky headers/overlays)
+ *   --crop-bottom N    Crop N CSS pixels from the bottom of the final image (for sticky banners/overlays)
  */
 
 const { execSync, spawnSync } = require('child_process');
@@ -47,6 +49,8 @@ const config = {
   darkMode: has('--dark-mode'),
   fullPage: has('--full-page'),
   hide: get('--hide', null),  // comma-separated CSS selectors to hide (e.g. "nav,header,.banner")
+  cropTop: parseInt(get('--crop-top', '0'), 10),
+  cropBottom: parseInt(get('--crop-bottom', '0'), 10),
 };
 
 if (!config.url || !config.out) {
@@ -129,6 +133,7 @@ const playwright = resolvePlaywright();
     }
 
     let screenshotPath = config.out;
+    const hasCrop = config.cropTop > 0 || config.cropBottom > 0;
 
     if (config.selector) {
       const locator = page.locator(config.selector).first();
@@ -136,30 +141,46 @@ const playwright = resolvePlaywright();
 
       if (count === 0) {
         console.error(`WARNING: selector "${config.selector}" not found — falling back to viewport`);
-        await page.screenshot({ path: screenshotPath, fullPage: config.fullPage });
+        if (hasCrop) {
+          const clip = {
+            x: 0,
+            y: config.cropTop,
+            width: config.width,
+            height: config.height - config.cropTop - config.cropBottom,
+          };
+          await page.screenshot({ path: screenshotPath, clip });
+        } else {
+          await page.screenshot({ path: screenshotPath, fullPage: config.fullPage });
+        }
       } else {
         await locator.scrollIntoViewIfNeeded();
         await page.waitForTimeout(300);
 
-        if (config.padding > 0) {
-          const box = await locator.boundingBox();
-          if (box) {
-            const clip = {
-              x: Math.max(0, box.x - config.padding),
-              y: Math.max(0, box.y - config.padding),
-              width: Math.min(config.width - Math.max(0, box.x - config.padding), box.width + config.padding * 2),
-              height: box.height + config.padding * 2,
-            };
-            await page.screenshot({ path: screenshotPath, clip });
-          } else {
-            await locator.screenshot({ path: screenshotPath });
-          }
+        const box = await locator.boundingBox();
+        if (box) {
+          const clip = {
+            x: Math.max(0, box.x - config.padding),
+            y: Math.max(0, box.y - config.padding) + config.cropTop,
+            width: Math.min(config.width - Math.max(0, box.x - config.padding), box.width + config.padding * 2),
+            height: box.height + config.padding * 2 - config.cropTop - config.cropBottom,
+          };
+          await page.screenshot({ path: screenshotPath, clip });
         } else {
           await locator.screenshot({ path: screenshotPath });
         }
       }
     } else {
-      await page.screenshot({ path: screenshotPath, fullPage: config.fullPage });
+      if (hasCrop) {
+        const clip = {
+          x: 0,
+          y: config.cropTop,
+          width: config.width,
+          height: config.height - config.cropTop - config.cropBottom,
+        };
+        await page.screenshot({ path: screenshotPath, clip });
+      } else {
+        await page.screenshot({ path: screenshotPath, fullPage: config.fullPage });
+      }
     }
 
     const stat = fs.statSync(screenshotPath);
